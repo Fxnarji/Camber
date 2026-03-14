@@ -4,8 +4,9 @@ import bpy  # type: ignore
 from .preferences import Sample_Preferences
 
 # Operators
-from .operators.OBJECT_OT_Sample import OBJECT_OT_Sample
+from .operators.OBJECT_OT_Lock import OBJECT_OT_Lock
 from .operators.DUMMY_OT_DummyOperator import DUMMY_OT_DummyOperator
+from .operators.GIT_OT_Commit import GIT_OT_Commit
 
 # panels
 from .panels.VIEW3D_PT_UI_Sample import VIEW3D_PT_UI_Sample
@@ -53,8 +54,9 @@ classes = [
     # preferences
     Sample_Preferences,
     # operators:
-    OBJECT_OT_Sample,
+    OBJECT_OT_Lock,
     DUMMY_OT_DummyOperator,
+    GIT_OT_Commit,
     # panels:
     VIEW3D_PT_UI_Sample,
 ]

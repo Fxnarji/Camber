@@ -1,19 +1,18 @@
 import bpy  # type: ignore
 from ..constants import AddonProperties
-from ..operators.OBJECT_OT_Sample import OBJECT_OT_Sample
+from ..operators.OBJECT_OT_Lock import OBJECT_OT_Lock
+from ..operators.GIT_OT_Commit import GIT_OT_Commit
+from ..msc.api import API
 
 class VIEW3D_PT_UI_Sample(bpy.types.Panel):
-    bl_label = "A Fancy Panel!"
+    bl_label = "Camber Debug"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = AddonProperties.panel_category
 
     def draw(self, context):
         layout = self.layout
-        box = layout.box()
-        box.label(text="you can give me a name!", icon="OUTLINER_DATA_LIGHT")
-        box.operator(OBJECT_OT_Sample.bl_idname, text="example operator", icon="BLENDER")
-
-        row = layout.row()
-        row.active = False
-        row.label(text="made by Fxnarji", icon="SHADERFX")
+            
+        layout.operator(OBJECT_OT_Lock.bl_idname, text = "lock").lock = True
+        layout.operator(OBJECT_OT_Lock.bl_idname, text = "unlock").lock = False
+        layout.operator(GIT_OT_Commit.bl_idname, text = "commit")

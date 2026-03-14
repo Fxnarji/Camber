@@ -9,7 +9,7 @@ bl_id_prefix = "my_addon"
 
 class AddonProperties:
     module_name = __package__
-    panel_category = "SamplePanel"
+    panel_category = "Camber"
 
 
 def get_manifest():

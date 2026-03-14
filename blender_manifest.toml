@@ -2,7 +2,7 @@ schema_version = "1.0.0"
 
 id = "your_repo_name"
 version = "1.1.0"
-name = "FX Basic Extension Template"
+name = "Camber"
 tagline = "A basic Extension Template to help you get started"
 maintainer = "your-mail@here.com"
 type = "add-on"
