@@ -32,7 +32,6 @@ class Handler():
         sec = api.sec
         
         watcher_script = os.path.join(os.path.dirname(__file__), "watcher.py")
-        print(watcher_script)
         addon_dir = os.path.dirname(os.path.dirname(__file__)) 
 
         args = [
@@ -53,8 +52,33 @@ class Handler():
             start_new_session=True 
         )
         pid_file = os.path.join(bpy.app.tempdir, "camber_sentinel.pid")
-        print(pid_file)
         with open(pid_file, "w") as f:
             f.write(str(process.pid))
+
+
+    @staticmethod
+    def check_lock_and_handle():
+        """
+        This runs slightly after the file opens via a timer.
+        It allows us to safely use UI operators and popups.
+        """
+        filepath = bpy.data.filepath
+        if not filepath:
+            return None # Cancel timer
+        
+        api = API()
+        # Assume api.check_lock(filepath) returns a dict or object 
+        # with lock info (e.g., {'is_locked': True, 'owner': 'JohnDoe'})
+        lock = api.is_file_locked(filepath)
+        
+        if lock is not None:
+            owner = lock["owner"]["name"]
+            bpy.ops.camber.locked_file_dialog('INVOKE_DEFAULT', locked_by=owner)
+        else:
+            # Safe to lock it for ourselves
+            Handler.lock_file(lock=True)
+            Handler.spawn_sentinel(filepath)
+            
+        return None # Returning None unregisters the timer
 
 

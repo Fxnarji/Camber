@@ -55,6 +55,13 @@ class API():
         }
     
     @property
+    def GENERIC_HEADER(self):
+        return {
+        "Authorization": f"token {self.sec.token}",
+        "Content-Type": "application/json"
+    }
+    
+    @property
     def AUTH(self):
         return HTTPBasicAuth(self.sec.username, self.sec.token)
 
@@ -65,11 +72,15 @@ class API():
         pass
 
     def is_file_locked(self, file_path):
+            
+            Git.fetch(file_path)
+
             """
             Returns the lock object if the file is locked, otherwise None.
-            file_path: relative path from repo root (e.g. 'assets/hero.blend')
+            file_path: absolute path
             """
-            # The URL we verified earlier
+
+            rel_path = self.convert_abs_to_relpath(file_path)
             url = f"{self.sec.root}/{self.sec.owner}/{self.sec.repo}.git/info/lfs/locks"
             
             try:
@@ -82,13 +93,9 @@ class API():
                 if response.status_code == 200:
                     locks = response.json().get('locks', [])
                     
-                    # Search for the file path in the list of locks
                     for lock in locks:
-                        if lock.get('path') == file_path:
-                            print(f"🚩 File is locked by {lock['owner']['name']}")
+                        if lock.get('path') == rel_path:
                             return lock # Return the whole dict so you have the ID/Owner
-                    
-                    print("✅ File is free to be locked.")
                     return None
                 else:
                     print(f"Error checking locks: {response.status_code}")
@@ -150,9 +157,54 @@ class API():
         return None
     
     def convert_abs_to_relpath(self, absolute_file_path):
+
         repo_dir = Git.get_git_repo(absolute_file_path)
         
         rel_path = os.path.relpath(absolute_file_path, repo_dir)
         
         rel_path = rel_path.replace(os.sep, '/')
         return rel_path
+    
+    def is_current_user_lock_owner(lock_owner_name):
+        """
+        Checks if the owner of the file lock matches the configured username in preferences.
+        """
+        if not lock_owner_name:
+            return False
+            
+        prefs = get_preferences()
+        if not prefs:
+            print("Warning: Could not fetch addon preferences.")
+            return False
+            
+        # Compare case-insensitively just to be safe
+        return prefs.username.strip().lower() == lock_owner_name.strip().lower()
+    
+    def authenticate_user(self, username):
+        """
+        Verifies identity via Forgejo API and checks against the lock owner.
+        """
+        prefs = get_preferences()
+        token = prefs.forgejo_token
+        server = prefs.server_url.rstrip('/')
+        
+        # Forgejo / Gitea 'Get Authenticated User' endpoint
+        url = f"{self.sec.root}/api/v1/user"
+
+        try:
+            response = requests.get(url, headers=self.GENERIC_HEADER, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                authenticated_username = data.get("username", "")
+                print("authenticating username:", authenticated_username)
+                
+                # Compare the actual account name from the server to the lock owner
+                return authenticated_username.lower() == username.lower()
+            else:
+                print(f"Auth failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"Connection error during auth: {e}")
+            return False

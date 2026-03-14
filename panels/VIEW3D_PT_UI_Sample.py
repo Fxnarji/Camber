@@ -1,7 +1,9 @@
 import bpy  # type: ignore
 from ..constants import AddonProperties
-from ..operators.OBJECT_OT_Lock import OBJECT_OT_Lock
+from ..operators.GIT_OT_Pull import GIT_OT_Pull
 from ..operators.GIT_OT_Commit import GIT_OT_Commit
+from ..operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
+
 from ..msc.api import API
 
 class VIEW3D_PT_UI_Sample(bpy.types.Panel):
@@ -13,9 +15,20 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        self.draw_commit(context, layout)
-        self.draw_history(context, layout)
-        self.draw_lock_status(context, layout)
+        if context.scene.camber_data.is_tracked:
+            self.draw_commit(context, layout)
+            self.draw_history(context, layout)
+            self.draw_lock_status(context, layout)
+            self.draw_pull(context, layout)
+        else:
+            layout.label(text = "Not in a git repo", icon = 'ERROR')
+            layout.operator(GIT_OT_RefreshHistory.bl_idname, icon = "FILE_REFRESH")
+
+
+    def draw_pull(self, context, layout):
+        box = layout.box()
+        box.operator(GIT_OT_Pull.bl_idname, text = "Fetch", icon = "FILE_REFRESH").fetch_only = True
+        box.operator(GIT_OT_Pull.bl_idname, text = "Pull Latest", icon = "IMPORT")
 
 
     def draw_lock_status(self, context, layout):

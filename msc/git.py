@@ -64,7 +64,6 @@ class Git():
             print(f"Error finding current file version: {e}")
             return "Unknown"
 
-
     @classmethod
     def commit(self, msg, filepath):
         # Get the directory of the current blend file
@@ -158,3 +157,46 @@ class Git():
         except FileNotFoundError:
             print("Git executable not found.")
             return []
+
+    
+        
+
+    @classmethod
+    def fetch(cls, file_path):
+        """Updates the local database with objects and refs from the remote."""
+        repo_dir = cls.get_git_repo(file_path)
+        try:
+            result = subprocess.run(
+                [cls.bin(), "fetch"],
+                cwd=repo_dir, 
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            # Git fetch outputs status to stderr even on success
+            fetch_summary = result.stderr.strip()
+            return True, fetch_summary
+        except subprocess.CalledProcessError as e:
+            print(f"Git Fetch Error: {e.stderr.decode() if e.stderr else str(e)}")
+            return False
+
+    @classmethod
+    def pull(cls, file_path):
+        """
+        Incorporate changes from a remote repository into the current branch.
+        Uses --rebase to keep history clean for binary files.
+        """
+        repo_dir = cls.get_git_repo(file_path)
+        try:
+            # We use --rebase to avoid creating unnecessary merge commits
+            # We use --autostash to temporarily move local changes out of the way
+            result = subprocess.run(
+                [cls.bin(), "pull"],
+                cwd=repo_dir, check=True, capture_output=True
+            )
+            print(result.stderr.strip())
+            return True, "Success"
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.decode() if e.stderr else str(e)
+            print(f"Git Pull Error: {error_msg}")
+            return False, error_msg

@@ -1,4 +1,4 @@
-import bpy
+import bpy #type: ignore
 
 class CamberPropertyGroup(bpy.types.PropertyGroup):
     commit_message: bpy.props.StringProperty(
@@ -14,4 +14,10 @@ class CamberPropertyGroup(bpy.types.PropertyGroup):
     )#type: ignore
 
     lock_date: bpy.props.StringProperty(
+    )#type: ignore
+
+    is_tracked: bpy.props.BoolProperty(
+    )#type: ignore
+
+    remote_commits: bpy.props.IntProperty(
     )#type: ignore

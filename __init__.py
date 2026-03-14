@@ -13,8 +13,11 @@ from .msc.list import GitListItem, GitUIList
 from .operators.OBJECT_OT_Lock import OBJECT_OT_Lock
 from .operators.DUMMY_OT_DummyOperator import DUMMY_OT_DummyOperator
 from .operators.GIT_OT_Commit import GIT_OT_Commit
+from .operators.GIT_OT_Pull import GIT_OT_Pull
+
 from .operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
 from .operators.GIT_OT_Checkout import GIT_OT_Checkout
+from .operators.CAMBER_OT_LockedFileDialog import CAMBER_OT_locked_file_dialog
 
 # property groups
 from .PropertyGroups.propertygroup import CamberPropertyGroup
@@ -74,6 +77,8 @@ classes = [
     GIT_OT_Commit,
     GIT_OT_RefreshHistory,
     GIT_OT_Checkout,
+    GIT_OT_Pull,
+    CAMBER_OT_locked_file_dialog,
     # Property Groups:
     CamberPropertyGroup,
     # panels:
@@ -90,6 +95,7 @@ def on_open_handler(dummy):
         pass
     Handler.lock_file()
     Handler.spawn_sentinel(bpy.data.filepath)
+    bpy.app.timers.register(Handler.check_lock_and_handle, first_interval=0.5)
 
 @persistent
 def on_close_handler(dummy):

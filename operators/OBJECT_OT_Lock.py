@@ -20,16 +20,16 @@ class OBJECT_OT_Lock(bpy.types.Operator):
             api = API()
             if self.lock:
                 response = api.lock(filepath)
+                if response is None:
+                    return{'CANCELLED'}
                 owner = response["lock"]["owner"]["name"]
                 date = response["lock"]["locked_at"]
-                print(response)
 
                 context.scene.camber_data["lock_owner"] = owner
                 context.scene.camber_data["lock_date"] = format_lock_date(date)
 
             else:
                 id = api.find_lock_id_by_path(filepath)
-                print(id)
                 api.unlock(id)
             return {'FINISHED'}
     

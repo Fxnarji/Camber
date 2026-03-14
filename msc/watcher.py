@@ -25,11 +25,15 @@ def watch_and_unlock():
         time.sleep(2)
     
     # Reconstruct the API with mock secrets
-    api = API(manual_secrets=MockSecrets())
-    
-    lock_id = api.find_lock_id_by_path(absolute_file_path=file_path)
-    if lock_id:
-        api.unlock(lock_id)
+    try: 
+        api = API(manual_secrets=MockSecrets())
+        
+        lock_id = api.find_lock_id_by_path(absolute_file_path=file_path)
+        if lock_id:
+            api.unlock(lock_id)
+    except:
+        # just making sure it dies even when there are some issues
+        return
 
 if __name__ == "__main__":
     watch_and_unlock()
