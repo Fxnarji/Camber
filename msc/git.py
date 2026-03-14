@@ -1,13 +1,17 @@
-from ..constants import get_preferences
+try:
+    from ..constants import get_preferences
+except:
+    # we are in watcher, no prefs needed
+    pass
+
 from pathlib import Path
 import subprocess
 import os
-import bpy
 
 class Git():
 
     @staticmethod
-    def git():
+    def bin():
         prefs = get_preferences()
         return prefs.git_path
 
@@ -22,25 +26,56 @@ class Git():
     def checkout(self, hash, file_path):
         repo_dir = self.get_git_repo(file_path)
         rel_path = os.path.relpath(file_path, repo_dir)
-        print(rel_path)
         subprocess.run(
-            [f"{self.git()}", "checkout", hash, "--", rel_path],
+            [f"{self.bin()}", "checkout", hash, "--", rel_path],
             cwd=repo_dir,
             check=True
                     )
         return None
 
     @classmethod
-    def commit(self, msg):
+    def get_current_commit_hash(cls, file_path):
+        repo_dir = cls.get_git_repo(file_path)
+        rel_path = os.path.relpath(file_path, repo_dir)
+
+        try:
+            # 1. Get the current file's blob hash
+            current_blob = subprocess.run(
+                [cls.bin(), "hash-object", rel_path],
+                cwd=repo_dir, capture_output=True, text=True, check=True
+            ).stdout.strip()
+
+            # 2. Get all commits that touched this file (newest to oldest)
+            log_cmd = [cls.bin(), "log", "--format=%h", "--", rel_path]
+            commits = subprocess.run(log_cmd, cwd=repo_dir, capture_output=True, text=True, check=True).stdout.splitlines()
+
+            # 3. Find the first commit where the file's blob matches the current blob
+            for commit_hash in commits:
+                # Ask Git: "What was the blob hash for this file in THIS specific commit?"
+                tree_cmd = [cls.bin(), "rev-parse", f"{commit_hash}:{rel_path}"]
+                commit_blob = subprocess.run(tree_cmd, cwd=repo_dir, capture_output=True, text=True).stdout.strip()
+                
+                if commit_blob == current_blob:
+                    return commit_hash # Found the exact match!
+
+            return "Modified/Uncommitted"
+
+        except Exception as e:
+            print(f"Error finding current file version: {e}")
+            return "Unknown"
+
+
+    @classmethod
+    def commit(self, msg, filepath):
         # Get the directory of the current blend file
-        repo_dir = os.path.dirname(bpy.data.filepath)
+        repo_dir = os.path.dirname(filepath)
         
         try:
-            subprocess.run([f"{self.git()}", "add", "."], cwd=repo_dir, check=True, capture_output=True)
+            subprocess.run([f"{self.bin()}", "add", bpy.data.filepath], cwd=repo_dir, check=True, capture_output=True)
             
-            subprocess.run([f"{self.git()}", "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
+            subprocess.run([f"{self.bin()}", "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
             
-            result = subprocess.run([f"{self.git()}", "push"], cwd=repo_dir, capture_output=True, text=True)
+            result = subprocess.run([f"{self.bin()}", "push"], cwd=repo_dir, capture_output=True, text=True)
             
             if result.returncode != 0:
                 print(f"Push failed: {result.stderr}")
@@ -53,7 +88,7 @@ class Git():
             print(f"Git Error: {error_msg}")
             return False, error_msg
         except FileNotFoundError:
-            print(self.git)
+            print(self.bin)
             return False, "Git executable not found. Is Git installed?"
         
     @classmethod
@@ -65,18 +100,18 @@ class Git():
             return []
 
         repo_dir = self.get_git_repo(file_path)
-        
-        file_name = os.path.basename(file_path)
+
+        rel_path = os.path.relpath(file_path, repo_dir)
 
         # We use a custom format to make parsing easy: 
         # %h = short hash, %an = author name, %ad = date, %s = subject (message)
         git_format = "%h%x09%an%x09%ad%x09%s"
         
         cmd = [
-            f"{self.git()}", "log", 
+            f"{self.bin()}", "log", 
             f"--pretty=format:{git_format}", 
             "--date=short", 
-            "--", file_name
+            "--", rel_path
         ]
 
         try:

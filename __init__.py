@@ -1,5 +1,8 @@
 import bpy  # type: ignore
 from bpy.app.handlers import persistent #type: ignore
+from .msc.handler_actions import Handler
+
+SENTINEL_PID = None
 # preferences
 from .preferences import Sample_Preferences
 
@@ -79,14 +82,19 @@ classes = [
 
 @persistent
 def on_open_handler(dummy):
-    print(f"File Opened: {bpy.data.filepath}")
     
-    # Example: Refresh your Git history automatically on open
-    if bpy.data.filepath:
-        try:
-            bpy.ops.camber.refresh()
-        except Exception as e:
-            print(f"Could not refresh git: {e}")
+    Handler.refresh_list()
+    try: 
+        Handler.lock_file(lock=False)
+    except:
+        pass
+    Handler.lock_file()
+    Handler.spawn_sentinel(bpy.data.filepath)
+
+@persistent
+def on_close_handler(dummy):
+    Handler.lock_file(lock = False)
+    pass
 
 
 def register():
@@ -96,6 +104,7 @@ def register():
     bpy.types.Scene.git_history = bpy.props.CollectionProperty(type=GitListItem)
     bpy.types.Scene.git_history_index = bpy.props.IntProperty(name="Index", default=0)
 
+    bpy.app.handlers.load_pre.append(on_close_handler)
     bpy.app.handlers.load_post.append(on_open_handler)
 
 def unregister():
@@ -105,6 +114,7 @@ def unregister():
     del bpy.types.Scene.git_history
     del bpy.types.Scene.git_history_index
 
+    bpy.app.handlers.load_pre.remove(on_close_handler)
     bpy.app.handlers.load_post.remove(on_open_handler)
 
 if __name__ == "__main__":

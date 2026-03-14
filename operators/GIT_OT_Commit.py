@@ -7,11 +7,15 @@ class GIT_OT_Commit(bpy.types.Operator):
     bl_label = "Commit Changes"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        return context.scene.camber_data["commit_message"] != ""
+
     def execute(self, context):
         camber_data = context.scene.camber_data
         msg = camber_data.get("commit_message")
 
-        git.commit(msg)
+        git.commit(msg, bpy.data.filepath)
 
         self.report({'INFO'}, f"Committed: {msg}")
 

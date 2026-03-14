@@ -12,12 +12,17 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-            
-        layout.operator(OBJECT_OT_Lock.bl_idname, text = "lock").lock = True
-        layout.operator(OBJECT_OT_Lock.bl_idname, text = "unlock").lock = False
 
         self.draw_commit(context, layout)
         self.draw_history(context, layout)
+        self.draw_lock_status(context, layout)
+
+
+    def draw_lock_status(self, context, layout):
+        camber_data = context.scene.camber_data
+        box = layout.box()
+        box.enabled = False
+        box.label(text = f"locked by: {camber_data.get('lock_owner')} since {camber_data.get('lock_date')}", icon = "LOCKED")
 
     def draw_commit(self, context, parent):
         camber_data = context.scene.camber_data
@@ -36,4 +41,7 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
             "git_history", 
             context.scene, 
             "git_history_index")
+        
+        current_hash = context.scene.camber_data.get("current_version")
+        layout.label(text = f"currently checked out: {current_hash}")
         

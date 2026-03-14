@@ -1,9 +1,17 @@
-from ..constants import get_preferences
+try:
+    import bpy
+    from ..constants import get_preferences
+except ImportError:
+    # We are in the watcher; these won't be used anyway
+    bpy = None
+    get_preferences = None
+
 import requests
 from requests.auth import HTTPBasicAuth
 import json
+import os
 
-
+from .git import Git
 
 class Secrets():
     @property
@@ -34,15 +42,14 @@ class Secrets():
         return self.prefs.owner
 
 class API():
+    def __init__(self, manual_secrets=None):
+        # If we are in the watcher, we pass secrets manually
+        # If in Blender, it uses the Secrets() class which hits prefs
+        self.sec = manual_secrets if manual_secrets else Secrets()
 
-    def __init__(self):
-        self.sec = Secrets()
-        
-    GENERIC_HEADER = {
-            "Authorization": f"token {Secrets.token}",
-            "Accept": "application/json"
-        }
-    LFS_HEADER = {
+    @property
+    def LFS_HEADER(self):
+        return {
             "Accept": "application/vnd.git-lfs+json",
             "Content-Type": "application/vnd.git-lfs+json"
         }
@@ -50,7 +57,6 @@ class API():
     @property
     def AUTH(self):
         return HTTPBasicAuth(self.sec.username, self.sec.token)
-
 
     def add_file():
         pass
@@ -92,10 +98,12 @@ class API():
                 print(f"Connection failed: {e}")
                 return None
 
-    def lock(self, file_path):
+    def lock(self, absolute_file_path):
             """API call to lock a file on Forgejo."""
+            rel_path = self.convert_abs_to_relpath(absolute_file_path)
+
             url = f"{self.sec.root}/{self.sec.owner}/{self.sec.repo}.git/info/lfs/locks"
-            payload = {"path": file_path}
+            payload = {"path": rel_path}
             
             response = requests.post(
                 url, 
@@ -105,10 +113,10 @@ class API():
             )
             
             if response.status_code == 201:
-                print(f"Locked {file_path}")
+                print(f"Locked {absolute_file_path}")
                 return response.json() # Returns the lock ID
             else:
-                print(f"Lock failed: {response.text} for {file_path}")
+                print(f"Lock failed: {response.text} for {absolute_file_path}")
                 return None
 
     def unlock(self, lock_id):
@@ -124,19 +132,27 @@ class API():
             )
             
             if response.status_code in [200, 204]:
-                print(f"Unlocked ID {lock_id}")
                 return True
             else:
-                print(f"Unlock failed: {response.text}, {response}")
                 return False
 
-    def find_lock_id_by_path(self, file_path):
+    def find_lock_id_by_path(self, absolute_file_path):
+        rel_path = self.convert_abs_to_relpath(absolute_file_path)
         url = f"{self.sec.root}/{self.sec.owner}/{self.sec.repo}.git/info/lfs/locks/"
         response = requests.get(url, headers=self.LFS_HEADER, auth=self.AUTH)
         
         if response.status_code == 200:
             locks = response.json().get('locks', [])
             for l in locks:
-                if l.get('path') == file_path:
+                # Now the comparison is apples-to-apples
+                if l.get('path') == rel_path:
                     return l.get('id')
         return None
+    
+    def convert_abs_to_relpath(self, absolute_file_path):
+        repo_dir = Git.get_git_repo(absolute_file_path)
+        
+        rel_path = os.path.relpath(absolute_file_path, repo_dir)
+        
+        rel_path = rel_path.replace(os.sep, '/')
+        return rel_path

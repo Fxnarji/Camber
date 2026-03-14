@@ -41,7 +41,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     git_path: bpy.props.StringProperty(
         name="Git Path",
         description="e.g. git",
-        default="Camber",
+        default="git",
     )
 
     def draw(self, context):

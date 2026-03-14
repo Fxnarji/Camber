@@ -6,18 +6,22 @@ class GitListItem(bpy.types.PropertyGroup):
     msg: bpy.props.StringProperty()#type: ignore
     author: bpy.props.StringProperty()#type: ignore
     date: bpy.props.StringProperty()#type: ignore
+    icon: bpy.props.StringProperty(default = "Null")#type: ignore
 
 
 
 class GitUIList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
             row = layout.row(align=True)
-            sub = row.row(align=True)
 
-            row.prop(item, "name", text=item.author, emboss=False)
+            split = row.split(factor=0.8)
+            split.prop(item, "name", text=f"{item.author}", emboss=False)
 
-            sub = row.row(align=True)
-
-            sub.alignment = 'RIGHT'
-            checkout = sub.operator(GIT_OT_Checkout.bl_idname, text = "get", icon = "LOOP_BACK")
+                 
+            current_hash = context.scene.camber_data.get("current_version")
+            if current_hash == item.hash:
+                checkout = split.operator(GIT_OT_Checkout.bl_idname, text = "", icon = "COLLECTION_COLOR_04")
+            else:
+                checkout = split.operator(GIT_OT_Checkout.bl_idname, text = "get", icon = "LOOP_BACK")
+                 
             checkout.hash = item.hash
