@@ -1,5 +1,5 @@
 try:
-    import bpy
+    import bpy #type: ignore
     from ..constants import get_preferences
 except ImportError:
     # We are in the watcher; these won't be used anyway
@@ -65,11 +65,6 @@ class API():
     def AUTH(self):
         return HTTPBasicAuth(self.sec.username, self.sec.token)
 
-    def add_file():
-        pass
-
-    def commit():
-        pass
 
     def is_file_locked(self, file_path):
             
@@ -164,28 +159,40 @@ class API():
         rel_path = rel_path.replace(os.sep, '/')
         return rel_path
     
-    def is_current_user_lock_owner(lock_owner_name):
-        """
-        Checks if the owner of the file lock matches the configured username in preferences.
-        """
-        if not lock_owner_name:
-            return False
-            
-        prefs = get_preferences()
-        if not prefs:
-            print("Warning: Could not fetch addon preferences.")
-            return False
-            
-        # Compare case-insensitively just to be safe
-        return prefs.username.strip().lower() == lock_owner_name.strip().lower()
+    def verify_repository(self):
+        url = f"{self.sec.root}/api/v1/repos/{self.sec.owner}/{self.sec.repo}"
+        print(f"verifying {url}")
+        response = requests.get(
+                url, 
+                headers=self.GENERIC_HEADER, 
+                json={}
+            )
+        if response.status_code == 200:
+            data = response.json()
+            return True, data.get("clone_url")
+        return False, f"invalid Repository!"
+
     
+    def verify_server(self):
+        url = f"{self.sec.root}/api/v1/version"
+        print(f"verifying {url}")
+        response = requests.get(
+                url, 
+                headers=self.LFS_HEADER, 
+                auth=self.AUTH,
+                json={}
+            )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return True, data.get('version')
+        return False, f"invalid response from{url}"
+
     def authenticate_user(self, username):
         """
         Verifies identity via Forgejo API and checks against the lock owner.
         """
-        prefs = get_preferences()
-        token = prefs.forgejo_token
-        server = prefs.server_url.rstrip('/')
+
         
         # Forgejo / Gitea 'Get Authenticated User' endpoint
         url = f"{self.sec.root}/api/v1/user"

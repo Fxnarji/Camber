@@ -15,6 +15,30 @@ class Git():
         prefs = get_preferences()
         return prefs.git_path
 
+    @classmethod
+    def validate(cls):
+        path = cls.bin()
+        if not path or not os.path.exists(path):
+            return False, "Path does not exist."
+
+        try:
+            result = subprocess.run(
+                [path, "--version"], 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                text=True, 
+                check=True
+            )
+            
+            if "git version" in result.stdout:
+                return True, result.stdout.strip()
+            return False, "Binary executed but didn't return a Git version."
+
+        except (subprocess.CalledProcessError, OSError):
+            return False, "Selected file is not a valid executable."
+
+
+    @staticmethod
     def get_git_repo(path):
         path = Path(path).resolve()
         for parent in [path] + list(path.parents):
@@ -23,11 +47,11 @@ class Git():
         raise ValueError("Not a git repository!")
     
     @classmethod
-    def checkout(self, hash, file_path):
-        repo_dir = self.get_git_repo(file_path)
+    def checkout(cls, hash, file_path):
+        repo_dir = cls.get_git_repo(file_path)
         rel_path = os.path.relpath(file_path, repo_dir)
         subprocess.run(
-            [f"{self.bin()}", "checkout", hash, "--", rel_path],
+            [f"{cls.bin()}", "checkout", hash, "--", rel_path],
             cwd=repo_dir,
             check=True
                     )
@@ -65,13 +89,13 @@ class Git():
             return "Unknown"
 
     @classmethod
-    def commit(self, msg, filepath):
+    def commit(cls, msg, filepath):
         # Get the directory of the current blend file
         repo_dir = os.path.basename(filepath)
         
         filename = os.path.basename(filepath)
         repo_dir = os.path.dirname(filepath)
-        git_bin = self.bin()
+        git_bin = cls.bin()
 
         try:
             # 1. Stage the file
@@ -99,17 +123,17 @@ class Git():
             print(f"Git Error: {error_msg}")
             return False, error_msg
         except FileNotFoundError:
-            print(self.bin)
+            print(cls.bin)
             return False, "Git executable not found. Is Git installed?"
 
     @classmethod
-    def get_detailed_git_history(self, file_path):
+    def get_detailed_git_history(cls, file_path):
         if not file_path or not os.path.exists(file_path):
             return []
 
-        repo_dir = self.get_git_repo(file_path)
+        repo_dir = cls.get_git_repo(file_path)
         rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/") # Git likes forward slashes
-        git_bin = self.bin()
+        git_bin = cls.bin()
 
         # Format: hash, author, date, message
         git_format = "%h%x09%an%x09%ad%x09%s"
@@ -155,14 +179,14 @@ class Git():
             return []
 
     @classmethod
-    def get_git_history(self, file_path):
+    def get_git_history(cls, file_path):
         """
         Returns a list of dictionaries containing commit history for a specific file.
         """
         if not file_path or not os.path.exists(file_path):
             return []
 
-        repo_dir = self.get_git_repo(file_path)
+        repo_dir = cls.get_git_repo(file_path)
 
         rel_path = os.path.relpath(file_path, repo_dir)
 
@@ -171,7 +195,7 @@ class Git():
         git_format = "%h%x09%an%x09%ad%x09%s"
         
         cmd = [
-            f"{self.bin()}", "log", 
+            f"{cls.bin()}", "log", 
             f"--pretty=format:{git_format}", 
             "--date=short", 
             "--", rel_path
