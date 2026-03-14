@@ -47,6 +47,10 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
         col.operator(GIT_OT_Commit.bl_idname, text="Push", icon = "EXPORT" )
 
     def draw_history(self, context, layout):
+        layout.prop(context.scene.camber_data, "admin_mode", toggle = True)
+        if context.scene.camber_data["admin_mode"]:
+            layout.operator(GIT_OT_RefreshHistory.bl_idname, icon = "FILE_REFRESH").detailed = True
+
         layout.template_list(
             "GitUIList", 
             "", 

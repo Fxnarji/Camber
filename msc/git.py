@@ -101,7 +101,59 @@ class Git():
         except FileNotFoundError:
             print(self.bin)
             return False, "Git executable not found. Is Git installed?"
-        
+
+    @classmethod
+    def get_detailed_git_history(self, file_path):
+        if not file_path or not os.path.exists(file_path):
+            return []
+
+        repo_dir = self.get_git_repo(file_path)
+        rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/") # Git likes forward slashes
+        git_bin = self.bin()
+
+        # Format: hash, author, date, message
+        git_format = "%h%x09%an%x09%ad%x09%s"
+        cmd = [git_bin, "log", f"--pretty=format:{git_format}", "--date=short", "--", rel_path]
+
+        try:
+            result = subprocess.run(cmd, cwd=repo_dir, capture_output=True, text=True, check=True)
+            history = []
+
+            for line in result.stdout.splitlines():
+                if not line.strip(): continue
+                parts = line.split('\t')
+                
+                if len(parts) == 4:
+                    commit_hash = parts[0]
+                    
+                    # NEW: Get the size of the file at THIS specific commit
+                    # ls-tree -l shows the object size in bytes
+                    size_cmd = [git_bin, "ls-tree", "-r", "-l", commit_hash, rel_path]
+                    size_result = subprocess.run(size_cmd, cwd=repo_dir, capture_output=True, text=True)
+                    
+                    # ls-tree output looks like: 100644 blob <hash> <size>    <path>
+                    size_str = "Unknown"
+                    if size_result.stdout:
+                        # Split by whitespace and grab the 4th element (the size)
+                        size_parts = size_result.stdout.split()
+                        if len(size_parts) >= 4:
+                            bytes_val = int(size_parts[3])
+                            size_str = f"{bytes_val / (1024*1024):.2f} MB"
+
+                    history.append({
+                        "hash": commit_hash,
+                        "author": parts[1],
+                        "date": parts[2],
+                        "message": parts[3],
+                        "size": size_str # Added to the dictionary
+                    })
+            
+            return history
+
+        except Exception as e:
+            print(f"Error fetching history with sizes: {e}")
+            return []
+
     @classmethod
     def get_git_history(self, file_path):
         """
@@ -200,3 +252,4 @@ class Git():
             error_msg = e.stderr.decode() if e.stderr else str(e)
             print(f"Git Pull Error: {error_msg}")
             return False, error_msg
+        

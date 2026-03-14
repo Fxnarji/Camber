@@ -44,6 +44,10 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         default="git",
     )
 
+    admin_permissions: bpy.props.BoolProperty(
+        default = True
+    )
+
     def draw(self, context):
         layout = self.layout
         layout.label(text="Forgejo API Configuration")
@@ -63,3 +67,5 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         box = layout.box()
         column = box.column()
         column.prop(self, "git_path")
+        column.prop(self, "admin_permissions")
+        

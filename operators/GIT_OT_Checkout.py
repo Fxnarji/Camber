@@ -9,6 +9,8 @@ class GIT_OT_Checkout(bpy.types.Operator):
 
     hash: bpy.props.StringProperty() #type: ignore
 
+    
+
     def execute(self, context):
         git.checkout(self.hash, bpy.data.filepath)
         bpy.ops.wm.open_mainfile(filepath=bpy.data.filepath, load_ui = False)

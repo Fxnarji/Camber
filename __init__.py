@@ -14,7 +14,6 @@ from .operators.OBJECT_OT_Lock import OBJECT_OT_Lock
 from .operators.DUMMY_OT_DummyOperator import DUMMY_OT_DummyOperator
 from .operators.GIT_OT_Commit import GIT_OT_Commit
 from .operators.GIT_OT_Pull import GIT_OT_Pull
-
 from .operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
 from .operators.GIT_OT_Checkout import GIT_OT_Checkout
 from .operators.CAMBER_OT_LockedFileDialog import CAMBER_OT_locked_file_dialog

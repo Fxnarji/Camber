@@ -106,7 +106,6 @@ class API():
                 return None
 
     def lock(self, absolute_file_path):
-            """API call to lock a file on Forgejo."""
             rel_path = self.convert_abs_to_relpath(absolute_file_path)
 
             url = f"{self.sec.root}/{self.sec.owner}/{self.sec.repo}.git/info/lfs/locks"
@@ -121,7 +120,7 @@ class API():
             
             if response.status_code == 201:
                 print(f"Locked {absolute_file_path}")
-                return response.json() # Returns the lock ID
+                return response.json()
             else:
                 print(f"Lock failed: {response.text} for {absolute_file_path}")
                 return None

@@ -8,12 +8,18 @@ class GIT_OT_RefreshHistory(bpy.types.Operator):
     bl_label = "Refresh Git History"
     bl_options = {'REGISTER', 'UNDO'}
 
+    detailed: bpy.props.BoolProperty(default = False)#type: ignore
+
     def execute(self, context):
             scene = context.scene
             
             try:
                 current_version = git.get_current_commit_hash(bpy.data.filepath)
-                history_data = git.get_git_history(bpy.data.filepath)
+                if self.detailed:
+                    history_data = git.get_detailed_git_history(bpy.data.filepath)
+                    print(history_data)
+                else:
+                    history_data = git.get_git_history(bpy.data.filepath)
                 git.fetch(bpy.data.filepath)
 
             except Exception as e:
@@ -33,5 +39,7 @@ class GIT_OT_RefreshHistory(bpy.types.Operator):
                 item.hash = entry['hash']
                 item.date = entry['date']
                 item.author = entry['author']
+            
+                item.size = entry.get("size") or ""
 
             return {'FINISHED'}

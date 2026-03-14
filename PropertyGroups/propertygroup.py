@@ -21,3 +21,8 @@ class CamberPropertyGroup(bpy.types.PropertyGroup):
 
     remote_commits: bpy.props.IntProperty(
     )#type: ignore
+
+    admin_mode: bpy.props.BoolProperty(
+        default = False
+    )#type: ignore
+    
