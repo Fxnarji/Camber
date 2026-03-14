@@ -20,15 +20,14 @@ def watch_and_unlock():
     while True:
         try:
             os.kill(int(pid), 0)
-            print("still running")
         except OSError:
             break
         time.sleep(2)
-
+    
     # Reconstruct the API with mock secrets
     api = API(manual_secrets=MockSecrets())
     
-    lock_id = api.find_lock_id_by_path(file_path)
+    lock_id = api.find_lock_id_by_path(absolute_file_path=file_path)
     if lock_id:
         api.unlock(lock_id)
 

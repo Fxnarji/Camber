@@ -68,20 +68,32 @@ class Git():
     @classmethod
     def commit(self, msg, filepath):
         # Get the directory of the current blend file
-        repo_dir = os.path.dirname(filepath)
+        repo_dir = os.path.basename(filepath)
         
-        try:
-            subprocess.run([f"{self.bin()}", "add", bpy.data.filepath], cwd=repo_dir, check=True, capture_output=True)
-            
-            subprocess.run([f"{self.bin()}", "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
-            
-            result = subprocess.run([f"{self.bin()}", "push"], cwd=repo_dir, capture_output=True, text=True)
-            
-            if result.returncode != 0:
-                print(f"Push failed: {result.stderr}")
-                return False, f"Commit saved, but Push failed: {result.stderr}"
+        filename = os.path.basename(filepath)
+        repo_dir = os.path.dirname(filepath)
+        git_bin = self.bin()
 
-            return True, "Successfully committed and pushed!"
+        try:
+            # 1. Stage the file
+            subprocess.run([git_bin, "add", filename], cwd=repo_dir, check=True, capture_output=True)
+            
+            # 2. Check: Is there actually anything staged to commit?
+            # --quiet returns 0 if no changes, 1 if there are changes.
+            # We DON'T use check=True here because we WANT to handle the exit code.
+            change_check = subprocess.run([git_bin, "diff", "--cached", "--quiet"], cwd=repo_dir)
+            
+            if change_check.returncode == 0:
+                print("No changes detected. Nothing to commit.") 
+                return True
+
+            # 3. Commit
+            subprocess.run([git_bin, "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
+            
+            # 4. Push
+            result = subprocess.run([git_bin, "push"], cwd=repo_dir, capture_output=True, text=True)
+
+            print("push result: ", result)
 
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.decode() if e.stderr else str(e)

@@ -9,7 +9,7 @@ class GIT_OT_Commit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.scene.camber_data["commit_message"] != ""
+        return context.scene.camber_data.get("commit_message") != ""
 
     def execute(self, context):
         camber_data = context.scene.camber_data
@@ -20,5 +20,6 @@ class GIT_OT_Commit(bpy.types.Operator):
         self.report({'INFO'}, f"Committed: {msg}")
 
         camber_data["commit_message"] = ""
+        bpy.ops.camber.lock()
         bpy.ops.camber.refresh()
         return {'FINISHED'}
