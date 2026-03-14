@@ -9,7 +9,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     forgejo_token: bpy.props.StringProperty(
         name="Forgejo Token",
         description="Your Personal Access Token from Forgejo",
-        default="e9649a078cd8a4eaf547c8054980f411fe93b8d9",
+        default="",
         subtype='PASSWORD' # Hides the text in the UI
     )
 
@@ -32,6 +32,18 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         default="Camber",
     )
 
+    owner: bpy.props.StringProperty(
+        name="Repo Owner",
+        description="e.g. TheLegend27",
+        default="Fxnarji",
+    )
+
+    git_path: bpy.props.StringProperty(
+        name="Git Path",
+        description="e.g. git",
+        default="Camber",
+    )
+
     def draw(self, context):
         layout = self.layout
         layout.label(text="Forgejo API Configuration")
@@ -40,8 +52,14 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         column = box.column()
         column.prop(self, "server_url")
         column.prop(self, "repository_name")
+        column.prop(self, "owner")
+
         
         box = layout.box()
         column = box.column()
         column.prop(self, "username")
         column.prop(self, "forgejo_token")
+
+        box = layout.box()
+        column = box.column()
+        column.prop(self, "git_path")

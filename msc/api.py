@@ -2,7 +2,7 @@ from ..constants import get_preferences
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-import bpy
+
 
 
 class Secrets():
@@ -31,8 +31,7 @@ class Secrets():
     
     @property
     def owner(self):
-        #return self.prefs.owner
-        return self.username
+        return self.prefs.owner
 
 class API():
 

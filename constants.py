@@ -5,7 +5,7 @@ import tomllib
 
 
 # has to be all lowercase
-bl_id_prefix = "my_addon"
+bl_id_prefix = "camber"
 
 class AddonProperties:
     module_name = __package__

@@ -1,12 +1,20 @@
 import bpy  # type: ignore
-
+from bpy.app.handlers import persistent #type: ignore
 # preferences
 from .preferences import Sample_Preferences
+
+# list
+from .msc.list import GitListItem, GitUIList
 
 # Operators
 from .operators.OBJECT_OT_Lock import OBJECT_OT_Lock
 from .operators.DUMMY_OT_DummyOperator import DUMMY_OT_DummyOperator
 from .operators.GIT_OT_Commit import GIT_OT_Commit
+from .operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
+from .operators.GIT_OT_Checkout import GIT_OT_Checkout
+
+# property groups
+from .PropertyGroups.propertygroup import CamberPropertyGroup
 
 # panels
 from .panels.VIEW3D_PT_UI_Sample import VIEW3D_PT_UI_Sample
@@ -53,24 +61,51 @@ bl_info = {
 classes = [
     # preferences
     Sample_Preferences,
+    # List
+    GitListItem,
+    GitUIList,   
+
     # operators:
     OBJECT_OT_Lock,
     DUMMY_OT_DummyOperator,
     GIT_OT_Commit,
+    GIT_OT_RefreshHistory,
+    GIT_OT_Checkout,
+    # Property Groups:
+    CamberPropertyGroup,
     # panels:
     VIEW3D_PT_UI_Sample,
 ]
+
+@persistent
+def on_open_handler(dummy):
+    print(f"File Opened: {bpy.data.filepath}")
+    
+    # Example: Refresh your Git history automatically on open
+    if bpy.data.filepath:
+        try:
+            bpy.ops.camber.refresh()
+        except Exception as e:
+            print(f"Could not refresh git: {e}")
 
 
 def register():
     for i in classes:
         bpy.utils.register_class(i)
+    bpy.types.Scene.camber_data = bpy.props.PointerProperty(type=CamberPropertyGroup)
+    bpy.types.Scene.git_history = bpy.props.CollectionProperty(type=GitListItem)
+    bpy.types.Scene.git_history_index = bpy.props.IntProperty(name="Index", default=0)
 
+    bpy.app.handlers.load_post.append(on_open_handler)
 
 def unregister():
     for i in reversed(classes):
         bpy.utils.unregister_class(i)
+    del bpy.types.Scene.camber_data
+    del bpy.types.Scene.git_history
+    del bpy.types.Scene.git_history_index
 
+    bpy.app.handlers.load_post.remove(on_open_handler)
 
 if __name__ == "__main__":
     register()
