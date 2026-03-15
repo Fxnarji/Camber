@@ -1,6 +1,7 @@
 import bpy  # type: ignore
 from bpy.app.handlers import persistent #type: ignore
 from .msc.handler_actions import Handler
+from .constants import get_operator
 
 SENTINEL_PID = None
 # preferences
@@ -16,7 +17,9 @@ from .operators.GIT_OT_Commit import GIT_OT_Commit
 from .operators.GIT_OT_Pull import GIT_OT_Pull
 from .operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
 from .operators.GIT_OT_Checkout import GIT_OT_Checkout
+from .operators.GIT_OT_Clone import GIT_OT_Clone
 from .operators.CAMBER_OT_LockedFileDialog import CAMBER_OT_locked_file_dialog
+
 
 # property groups
 from .PropertyGroups.propertygroup import CamberPropertyGroup
@@ -77,6 +80,7 @@ classes = [
     GIT_OT_RefreshHistory,
     GIT_OT_Checkout,
     GIT_OT_Pull,
+    GIT_OT_Clone,
     CAMBER_OT_locked_file_dialog,
     # Property Groups:
     CamberPropertyGroup,
@@ -85,21 +89,15 @@ classes = [
 ]
 
 @persistent
-def on_open_handler(dummy):
-    
-    Handler.refresh_list()
-    try: 
-        Handler.lock_file(lock=False)
-    except:
-        pass
-    Handler.lock_file()
-    Handler.spawn_sentinel(bpy.data.filepath)
-    bpy.app.timers.register(Handler.check_lock_and_handle, first_interval=0.5)
+def on_load(dummy):
 
-@persistent
-def on_close_handler(dummy):
-    Handler.lock_file(lock = False)
-    pass
+    def show_dialog():
+        locked = Handler.is_file_locked(bpy.data.filepath)
+        if locked:
+            bpy.ops.camber.locked_file_dialog('INVOKE_DEFAULT')
+        return None
+
+    bpy.app.timers.register(show_dialog, first_interval=0.1)
 
 
 def register():
@@ -109,8 +107,7 @@ def register():
     bpy.types.Scene.git_history = bpy.props.CollectionProperty(type=GitListItem)
     bpy.types.Scene.git_history_index = bpy.props.IntProperty(name="Index", default=0)
 
-    bpy.app.handlers.load_pre.append(on_close_handler)
-    bpy.app.handlers.load_post.append(on_open_handler)
+    bpy.app.handlers.load_post.append(on_load)
 
 def unregister():
     for i in reversed(classes):
@@ -119,8 +116,7 @@ def unregister():
     del bpy.types.Scene.git_history
     del bpy.types.Scene.git_history_index
 
-    bpy.app.handlers.load_pre.remove(on_close_handler)
-    bpy.app.handlers.load_post.remove(on_open_handler)
+    bpy.app.handlers.load_post.remove(on_load)
 
 if __name__ == "__main__":
     register()

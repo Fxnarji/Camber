@@ -9,27 +9,15 @@ class CAMBER_OT_locked_file_dialog(bpy.types.Operator):
     bl_idname = get_operator("locked_file_dialog")
     bl_label = "File Lock Status"
     bl_options = {'REGISTER', 'INTERNAL'}
-    
-    # We pass the filepath to the operator so it can do the heavy lifting
-    locked_by: bpy.props.StringProperty() # type: ignore
-    message: bpy.props.StringProperty(default="Test") # type: ignore
-    
+        
 
     def invoke(self, context, event):
-        user = get_preferences().username
-        api = API()
-        is_user_verified = api.authenticate_user(user)
-        
-        if self.locked_by == user and is_user_verified:
-            self.report({'INFO'}, f"User '{user}' is verified Owner of Lock.")
-            return {'FINISHED'}
-
-        # someone else opens it - YEET
+        print("invoked!")
         return context.window_manager.invoke_props_dialog(self, width=400)
     
     def draw(self, context):
         layout = self.layout
-        layout.label(text=f"Warning: Locked by {self.locked_by}", icon='ERROR')
+        layout.label(text=f"Warning: Locked File", icon='ERROR')
         layout.label(text="You do not have permission to edit this file.")
         layout.separator()
         

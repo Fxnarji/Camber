@@ -16,7 +16,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     
     def validate_github(self, context):
-        success, status = git.validate()
+        success, status = git.validate_git_binary()
         self.github_status = status
         print(self.github_status)
         self.valid_github = success
@@ -44,19 +44,11 @@ class Sample_Preferences(bpy.types.AddonPreferences):
 
 
 
-# 1. The Token Property
-    forgejo_token: bpy.props.StringProperty(
-        name="Forgejo Token",
-        description="Your Personal Access Token from Forgejo",
-        default= Defaults.password or "",
-        subtype='PASSWORD', # Hides the text in the UI
-        update=validate_credentials
-    )#type: ignore
 
     # 2. The Server URL Property
-    server_url: bpy.props.StringProperty(
+    repository_link: bpy.props.StringProperty(
         name="Server URL",
-        description="e.g. https://git.mydomain.com",
+        description="e.g. https://git.mydomain.com/User/Repository",
         default=Defaults.server_url or "",
         update=validate_server
     )#type: ignore
@@ -147,9 +139,9 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         box = layout.box()
         box.prop(self, "server_url")
         if self.valid_server:
-            box.label(text =f"Connected to {self.server_url}, version is: {self.server_status}", icon = self.success_icon)
+            box.label(text =f"Connected to {self.repository_link}, version is: {self.server_status}", icon = self.success_icon)
         else:
-            box.label(text = f"Invali API response from: {self.server_url}, {self.server_status}", icon = self.failure_icon)
+            box.label(text = f"Invali API response from: {self.repository_link}, {self.server_status}", icon = self.failure_icon)
         
             
 
@@ -164,6 +156,8 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         else:
             row.label(text = self.repository_status, icon = self.failure_icon)
         row.prop(self, "admin_permissions", toggle= True, text = "Admin", icon = "USER")
+
+        row.operator(get_operator("clone"), icon = "IMPORT")
             
 
     def draw_credentials(self, context, layout):

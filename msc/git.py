@@ -12,11 +12,45 @@ class Git():
 
     @staticmethod
     def bin():
-        prefs = get_preferences()
+        prefs = get_preferences() #type: ignore
         return prefs.git_path
 
+    @staticmethod
+    def repository_url():
+        prefs = get_preferences() #type: ignore
+        url = prefs.server_url
+        owner = prefs.owner
+        repo_name = prefs.repository_name
+
+        repository = f"{url}/{owner}/{repo_name}"
+        return repository
     @classmethod
-    def validate(cls):
+    def file_in_repo(cls, filepath):
+        filepath = Path(filepath)
+        expected_repo_url = cls.repository_url()
+        try:
+            root = subprocess.check_output(
+                [cls.bin(), "-C", str(filepath.parent), "rev-parse", "--show-toplevel"],
+                stderr=subprocess.DEVNULL
+            ).decode().strip()
+
+            print("root: ",root)
+
+
+            remote = subprocess.check_output(
+                [cls.bin(), "-C", root, "remote", "get-url", "origin"],
+                stderr=subprocess.DEVNULL
+            ).decode().strip()
+
+            print("remote: ", remote)
+
+            return expected_repo_url in remote
+
+        except subprocess.CalledProcessError:
+            return False
+
+    @classmethod
+    def validate_git_binary(cls):
         path = cls.bin()
         if not path or not os.path.exists(path):
             return False, "Path does not exist."
@@ -36,6 +70,17 @@ class Git():
 
         except (subprocess.CalledProcessError, OSError):
             return False, "Selected file is not a valid executable."
+
+
+    @classmethod
+    def clone(cls, repo_dir):
+        repository = cls.repository_url()
+        result = subprocess.run(
+            [f"{cls.bin()}", "clone", f"{repository}.git", repo_dir],
+            )
+        
+        print(result.stderr.strip())
+        return None
 
 
     @staticmethod

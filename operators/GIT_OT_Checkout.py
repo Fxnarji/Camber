@@ -1,4 +1,4 @@
-import bpy
+import bpy  #type: ignore
 from ..constants import get_operator
 from ..msc.git import Git as git
 

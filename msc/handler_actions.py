@@ -1,5 +1,6 @@
 from ..msc.api import API
 from ..msc.git import Git
+from ..constants import get_preferences
 import os
 import subprocess
 import sys
@@ -27,58 +28,29 @@ class Handler():
 
 
     @staticmethod
-    def spawn_sentinel(file_path):
-        api = API() # Get current API (using Blender prefs)
-        sec = api.sec
-        
-        watcher_script = os.path.join(os.path.dirname(__file__), "watcher.py")
-        addon_dir = os.path.dirname(os.path.dirname(__file__)) 
-
-        args = [
-            sys.executable, watcher_script,
-            str(os.getpid()),
-            file_path,
-            sec.root,
-            sec.owner,
-            sec.repo,
-            sec.username,
-            sec.token,
-            addon_dir
-        ]
-
-        process = subprocess.Popen(
-            args,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
-            start_new_session=True 
-        )
-        pid_file = os.path.join(bpy.app.tempdir, "camber_sentinel.pid")
-        with open(pid_file, "w") as f:
-            f.write(str(process.pid))
-
-
-    @staticmethod
-    def check_lock_and_handle():
+    def is_file_locked(filepath) -> None|bool:
         """
         This runs slightly after the file opens via a timer.
         It allows us to safely use UI operators and popups.
         """
-        filepath = bpy.data.filepath
         if not filepath:
-            return None # Cancel timer
+            return None
+        
+        if not Git.file_in_repo(filepath):
+            return None
         
         api = API()
-        # Assume api.check_lock(filepath) returns a dict or object 
-        # with lock info (e.g., {'is_locked': True, 'owner': 'JohnDoe'})
         lock = api.is_file_locked(filepath)
         
         if lock is not None:
-            owner = lock["owner"]["name"]
-            bpy.ops.camber.locked_file_dialog('INVOKE_DEFAULT', locked_by=owner)
-        else:
-            # Safe to lock it for ourselves
-            Handler.lock_file(lock=True)
-            Handler.spawn_sentinel(filepath)
+            lock_owner = lock["owner"]["name"]
+            user = get_preferences().username
+            is_user_verified = api.authenticate_user(user)
+        
+            if lock_owner == user and is_user_verified:
+                return False
+            else:
+                return True
+        
+        return None
             
-        return None # Returning None unregisters the timer
-
-
