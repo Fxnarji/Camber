@@ -1,7 +1,6 @@
 import bpy  # type: ignore
 from .constants import get_operator
 from .msc.git import Git as git
-from .msc.api import API
 
 try: 
     # use sensitive defaults in seperate file in gitignore
@@ -23,24 +22,13 @@ class Sample_Preferences(bpy.types.AddonPreferences):
 
 
     def verify_repository(self, context):
-        api = API()
-        success, status  = api.verify_repository()
-        self.valid_repository = success
-        self.repository_status = status
+        pass
 
     def validate_server(self, context):
-        api = API()
-        success, status = api.verify_server()
-        self.valid_server = success
-        self.server_status = status
+        pass
 
     def validate_credentials(self, context):
-        api = API()
-        valid_login = api.authenticate_user(self.username)
-        if valid_login:
-            self.user_status = True
-        else:
-            self.user_status = False
+        pass
 
 
 
@@ -49,7 +37,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     repository_link: bpy.props.StringProperty(
         name="Server URL",
         description="e.g. https://git.mydomain.com/User/Repository",
-        default=Defaults.server_url or "",
+        default=Defaults.server_url or "", #type: ignore
         update=validate_server
     )#type: ignore
 
@@ -57,7 +45,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     username: bpy.props.StringProperty(
         name="Username",
         description="e.g. TheLegend27",
-        default=Defaults.username or "",
+        default=Defaults.username or "", #type: ignore
         update=validate_credentials
     )#type: ignore
 
@@ -65,7 +53,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     repository_name: bpy.props.StringProperty(
         name="Repo Name",
         description="e.g. MyRepository",
-        default=Defaults.repo_name or "",
+        default=Defaults.repo_name or "", #type: ignore
         update=verify_repository
     )#type: ignore
 
@@ -73,7 +61,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
     owner: bpy.props.StringProperty(
         name="Repo Owner",
         description="e.g. TheLegend27",
-        default=Defaults.owner or ""
+        default=Defaults.owner or "" #type: ignore
     )#type: ignore
 
 
@@ -81,7 +69,7 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         name="Git Path",
         description="e.g. git",
         subtype='FILE_PATH',
-        default = Defaults.git_path or "",
+        default = Defaults.git_path or "", #type: ignore
         update = validate_github
     )#type: ignore
 

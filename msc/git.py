@@ -1,9 +1,3 @@
-try:
-    from ..constants import get_preferences
-except:
-    # we are in watcher, no prefs needed
-    pass
-
 from pathlib import Path
 import subprocess
 import os

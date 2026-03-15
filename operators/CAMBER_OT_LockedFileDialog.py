@@ -2,7 +2,6 @@ import bpy # type: ignore
 import os
 import tempfile
 from ..constants import get_operator, get_preferences
-from ..msc.api import API
 
 class CAMBER_OT_locked_file_dialog(bpy.types.Operator):
     """Checks file lock and handles the UI intervention if necessary"""

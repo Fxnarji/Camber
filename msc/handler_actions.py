@@ -1,4 +1,3 @@
-from ..msc.api import API
 from ..msc.git import Git
 from ..constants import get_preferences
 import os
@@ -29,28 +28,6 @@ class Handler():
 
     @staticmethod
     def is_file_locked(filepath) -> None|bool:
-        """
-        This runs slightly after the file opens via a timer.
-        It allows us to safely use UI operators and popups.
-        """
-        if not filepath:
-            return None
-        
-        if not Git.file_in_repo(filepath):
-            return None
-        
-        api = API()
-        lock = api.is_file_locked(filepath)
-        
-        if lock is not None:
-            lock_owner = lock["owner"]["name"]
-            user = get_preferences().username
-            is_user_verified = api.authenticate_user(user)
-        
-            if lock_owner == user and is_user_verified:
-                return False
-            else:
-                return True
-        
-        return None
+        pass
+    
             
