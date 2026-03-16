@@ -4,7 +4,6 @@ from ..operators.GIT_OT_Pull import GIT_OT_Pull
 from ..operators.GIT_OT_Commit import GIT_OT_Commit
 from ..operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
 
-from ..msc.api import API
 
 class VIEW3D_PT_UI_Sample(bpy.types.Panel):
     bl_label = "Camber Debug"

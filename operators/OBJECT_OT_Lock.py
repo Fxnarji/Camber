@@ -1,6 +1,5 @@
 import bpy  # type: ignore
 from ..constants import get_operator, get_preferences
-from ..msc.api import API
 from pathlib import Path
 from datetime import datetime
 # Define the operator to snap FK bones to IK bones
@@ -14,24 +13,7 @@ class OBJECT_OT_Lock(bpy.types.Operator):
     lock: bpy.props.BoolProperty(name="lock", default= False) #type: ignore
 
     def execute(self, context):
-
-            filepath = Path(bpy.data.filepath)
-
-            api = API()
-            if self.lock:
-                response = api.lock(filepath)
-                if response is None:
-                    return{'CANCELLED'}
-                owner = response["lock"]["owner"]["name"]
-                date = response["lock"]["locked_at"]
-
-                context.scene.camber_data["lock_owner"] = owner
-                context.scene.camber_data["lock_date"] = format_lock_date(date)
-
-            else:
-                id = api.find_lock_id_by_path(filepath)
-                api.unlock(id)
-            return {'FINISHED'}
+        return{'FINISHED'}
     
 
 def format_lock_date(iso_string):

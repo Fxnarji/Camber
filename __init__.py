@@ -5,7 +5,7 @@ from .constants import get_operator
 
 SENTINEL_PID = None
 # preferences
-from .preferences import Sample_Preferences
+from .preferences import CamberPreferences
 
 # list
 from .msc.list import GitListItem, GitUIList
@@ -18,6 +18,7 @@ from .operators.GIT_OT_Pull import GIT_OT_Pull
 from .operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
 from .operators.GIT_OT_Checkout import GIT_OT_Checkout
 from .operators.GIT_OT_Clone import GIT_OT_Clone
+from .operators.GIT_OT_Verify import GIT_OT_Verify
 from .operators.CAMBER_OT_LockedFileDialog import CAMBER_OT_locked_file_dialog
 
 
@@ -68,7 +69,7 @@ bl_info = {
 
 classes = [
     # preferences
-    Sample_Preferences,
+    CamberPreferences,
     # List
     GitListItem,
     GitUIList,   
@@ -81,6 +82,7 @@ classes = [
     GIT_OT_Checkout,
     GIT_OT_Pull,
     GIT_OT_Clone,
+    GIT_OT_Verify,
     CAMBER_OT_locked_file_dialog,
     # Property Groups:
     CamberPropertyGroup,

@@ -1,204 +1,126 @@
 from pathlib import Path
 import subprocess
 import os
+from .session import get_session
 
-class Git():
+class Git:
 
-    @staticmethod
-    def bin():
-        prefs = get_preferences() #type: ignore
-        return prefs.git_path
+    def __init__(self, filepath:str):
+        self.file =f"{str(Path(filepath).name)}"
+        self.path = Path(filepath).parent
+        self.session = get_session()
 
-    @staticmethod
-    def repository_url():
-        prefs = get_preferences() #type: ignore
-        url = prefs.server_url
-        owner = prefs.owner
-        repo_name = prefs.repository_name
-
-        repository = f"{url}/{owner}/{repo_name}"
-        return repository
-    @classmethod
-    def file_in_repo(cls, filepath):
-        filepath = Path(filepath)
-        expected_repo_url = cls.repository_url()
-        try:
-            root = subprocess.check_output(
-                [cls.bin(), "-C", str(filepath.parent), "rev-parse", "--show-toplevel"],
-                stderr=subprocess.DEVNULL
-            ).decode().strip()
-
-            print("root: ",root)
+        print(self.file)
+        print(self.path)
 
 
-            remote = subprocess.check_output(
-                [cls.bin(), "-C", root, "remote", "get-url", "origin"],
-                stderr=subprocess.DEVNULL
-            ).decode().strip()
+    def bin(self) -> str:
+        """Return the path to the git executable."""
+        git_bin = getattr(self.session, "git_bin", None)
+        if git_bin:
+            return git_bin
+        raise ValueError("No git instance found")
 
-            print("remote: ", remote)
-
-            return expected_repo_url in remote
-
-        except subprocess.CalledProcessError:
-            return False
-
-    @classmethod
-    def validate_git_binary(cls):
-        path = cls.bin()
-        if not path or not os.path.exists(path):
-            return False, "Path does not exist."
-
-        try:
-            result = subprocess.run(
-                [path, "--version"], 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, 
-                text=True, 
-                check=True
-            )
-            
-            if "git version" in result.stdout:
-                return True, result.stdout.strip()
-            return False, "Binary executed but didn't return a Git version."
-
-        except (subprocess.CalledProcessError, OSError):
-            return False, "Selected file is not a valid executable."
-
-
-    @classmethod
-    def clone(cls, repo_dir):
-        repository = cls.repository_url()
+    def run_git_command(self, arguments: list[str], check: bool = True, path = None, strip = True) -> str:
+        git_exe = self.bin()
+        if not path:
+            path = self.path
         result = subprocess.run(
-            [f"{cls.bin()}", "clone", f"{repository}.git", repo_dir],
-            )
+            [git_exe, *arguments],
+            capture_output=True,
+            cwd=path,
+            text=True,
+            check=check
+        )
+        if strip:
+            return result.stdout.strip()
+        else:
+            return result.stdout
+
+    def verify_git_bin(self) -> tuple[bool, str]:
+        try:
+            output = self.run_git_command(["ls-remote", "https://github.com/example/test"])
+            return True, output
+        except (subprocess.CalledProcessError, ValueError, FileNotFoundError) as e:
+            return False, str(e)
         
-        print(result.stderr.strip())
-        return None
+    def verify_repository(self) -> tuple[bool, str]:
+        session = get_session()
+        url = session.repository_url
 
-
-    @staticmethod
-    def get_git_repo(path):
-        path = Path(path).resolve()
-        for parent in [path] + list(path.parents):
-            if (parent / ".git").is_dir():
-                return parent
-        raise ValueError("Not a git repository!")
-    
-    @classmethod
-    def checkout(cls, hash, file_path):
-        repo_dir = cls.get_git_repo(file_path)
-        rel_path = os.path.relpath(file_path, repo_dir)
-        subprocess.run(
-            [f"{cls.bin()}", "checkout", hash, "--", rel_path],
-            cwd=repo_dir,
-            check=True
-                    )
-        return None
-
-    @classmethod
-    def get_current_commit_hash(cls, file_path):
-        repo_dir = cls.get_git_repo(file_path)
-        rel_path = os.path.relpath(file_path, repo_dir)
+        if url is None:
+            return False, "No url provided"
 
         try:
-            # 1. Get the current file's blob hash
-            current_blob = subprocess.run(
-                [cls.bin(), "hash-object", rel_path],
-                cwd=repo_dir, capture_output=True, text=True, check=True
-            ).stdout.strip()
-
-            # 2. Get all commits that touched this file (newest to oldest)
-            log_cmd = [cls.bin(), "log", "--format=%h", "--", rel_path]
-            commits = subprocess.run(log_cmd, cwd=repo_dir, capture_output=True, text=True, check=True).stdout.splitlines()
-
-            # 3. Find the first commit where the file's blob matches the current blob
-            for commit_hash in commits:
-                # Ask Git: "What was the blob hash for this file in THIS specific commit?"
-                tree_cmd = [cls.bin(), "rev-parse", f"{commit_hash}:{rel_path}"]
-                commit_blob = subprocess.run(tree_cmd, cwd=repo_dir, capture_output=True, text=True).stdout.strip()
-                
-                if commit_blob == current_blob:
-                    return commit_hash # Found the exact match!
-
-            return "Modified/Uncommitted"
-
+            output = self.run_git_command(arguments=["ls-remote",url])
+            return True, output
+        except (subprocess.CalledProcessError, ValueError, FileNotFoundError) as e:
+            return False, str(e)
+          
+    def push(self) -> tuple[bool,str]:
+        try:
+            self.run_git_command(["push", "origin", "HEAD"])
         except Exception as e:
-            print(f"Error finding current file version: {e}")
-            return "Unknown"
+            return False, f"push failed because {e}"
+        return True, "success"
 
-    @classmethod
-    def commit(cls, msg, filepath):
-        # Get the directory of the current blend file
-        repo_dir = os.path.basename(filepath)
-        
-        filename = os.path.basename(filepath)
-        repo_dir = os.path.dirname(filepath)
-        git_bin = cls.bin()
-
+    def commit(self, message) -> tuple[bool,str]:
         try:
-            # 1. Stage the file
-            subprocess.run([git_bin, "add", filename], cwd=repo_dir, check=True, capture_output=True)
-            
-            # 2. Check: Is there actually anything staged to commit?
-            # --quiet returns 0 if no changes, 1 if there are changes.
-            # We DON'T use check=True here because we WANT to handle the exit code.
-            change_check = subprocess.run([git_bin, "diff", "--cached", "--quiet"], cwd=repo_dir)
-            
-            if change_check.returncode == 0:
-                print("No changes detected. Nothing to commit.") 
-                return True
+            self.run_git_command(["add", str(self.file)])
+            self.run_git_command(["commit", "-m", message])
+        except Exception as e:
+            return False, f"commit failed because {e}"
+        return True, "success"
 
-            # 3. Commit
-            subprocess.run([git_bin, "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
-            
-            # 4. Push
-            result = subprocess.run([git_bin, "push"], cwd=repo_dir, capture_output=True, text=True)
+    def fetch(self):
+        try:
+            self.run_git_command(["fetch", "origin"])
+        except Exception as e:
+            return False, f"fetch failed because {e}"
+        return True, "success"
 
-            print("push result: ", result)
+    def pull(self) -> tuple[bool,str]:
+        try:
+            self.fetch()
+            self.run_git_command(["pull", "origin", "HEAD"])
+        except Exception as e:
+            return False, f"pull failed because {e}"
+        return True, "success"
 
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
-            print(f"Git Error: {error_msg}")
-            return False, error_msg
-        except FileNotFoundError:
-            print(cls.bin)
-            return False, "Git executable not found. Is Git installed?"
-
-    @classmethod
-    def get_detailed_git_history(cls, file_path):
-        if not file_path or not os.path.exists(file_path):
-            return []
-
-        repo_dir = cls.get_git_repo(file_path)
-        rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/") # Git likes forward slashes
-        git_bin = cls.bin()
-
+    def clone(self, directory: str) -> tuple[bool,str]:
+        try:
+            self.run_git_command(["clone", str(self.session.repository_url)], path = directory)
+        except Exception as e:
+            return False, f"clone failed because {e}"
+        return True, "success"
+    
+    def checkout(self, hash) -> tuple[bool,str]:
+        try:
+            self.run_git_command(["checkout", hash, "--", self.file])
+        except Exception as e:
+            return False, f"checkout failed because {e}"
+        return True, "success"
+    
+    def get_detailed_git_history(self):
         # Format: hash, author, date, message
         git_format = "%h%x09%an%x09%ad%x09%s"
-        cmd = [git_bin, "log", f"--pretty=format:{git_format}", "--date=short", "--", rel_path]
+
+        history = []
 
         try:
-            result = subprocess.run(cmd, cwd=repo_dir, capture_output=True, text=True, check=True)
-            history = []
-
-            for line in result.stdout.splitlines():
+            result = self.run_git_command(["log", f"--pretty=format:{git_format}", "--date=short", "--", self.file])
+            for line in result:
                 if not line.strip(): continue
                 parts = line.split('\t')
                 
                 if len(parts) == 4:
                     commit_hash = parts[0]
                     
-                    # NEW: Get the size of the file at THIS specific commit
-                    # ls-tree -l shows the object size in bytes
-                    size_cmd = [git_bin, "ls-tree", "-r", "-l", commit_hash, rel_path]
-                    size_result = subprocess.run(size_cmd, cwd=repo_dir, capture_output=True, text=True)
+                    size_result = self.run_git_command([self.bin(), "ls-tree", "-r", "-l", commit_hash, self.file], strip=False)
                     
-                    # ls-tree output looks like: 100644 blob <hash> <size>    <path>
                     size_str = "Unknown"
-                    if size_result.stdout:
-                        # Split by whitespace and grab the 4th element (the size)
-                        size_parts = size_result.stdout.split()
+                    if size_result:
+                        size_parts = size_result.split()
                         if len(size_parts) >= 4:
                             bytes_val = int(size_parts[3])
                             size_str = f"{bytes_val / (1024*1024):.2f} MB"
@@ -208,111 +130,31 @@ class Git():
                         "author": parts[1],
                         "date": parts[2],
                         "message": parts[3],
-                        "size": size_str # Added to the dictionary
+                        "size": size_str
                     })
             
-            return history
+            return True, history
+        except Exception as e:
+            return False, f"getting history failed because {e}"
+        
+    def get_current_commit(self) -> tuple[bool,str]:
+
+        try:
+            # 1. Get the current file's blob hash
+            current_blob = self.run_git_command(["hash-object", self.file])
+
+            # 2. Get all commits that touched this file (newest to oldest)
+            commits = self.run_git_command(["log", "--format=%", "--"], strip = False).splitlines()
+
+            # 3. Find the first commit where the file's blob matches the current blob
+            for commit_hash in commits:
+                commit_blob = self.run_git_command(["rev-parse", f"{commit_hash}:{self.file}"])
+                
+                if commit_blob == current_blob:
+                    return True, commit_hash # Found the exact match!
+
+            return False, "didnt find hash"
 
         except Exception as e:
-            print(f"Error fetching history with sizes: {e}")
-            return []
-
-    @classmethod
-    def get_git_history(cls, file_path):
-        """
-        Returns a list of dictionaries containing commit history for a specific file.
-        """
-        if not file_path or not os.path.exists(file_path):
-            return []
-
-        repo_dir = cls.get_git_repo(file_path)
-
-        rel_path = os.path.relpath(file_path, repo_dir)
-
-        # We use a custom format to make parsing easy: 
-        # %h = short hash, %an = author name, %ad = date, %s = subject (message)
-        git_format = "%h%x09%an%x09%ad%x09%s"
-        
-        cmd = [
-            f"{cls.bin()}", "log", 
-            f"--pretty=format:{git_format}", 
-            "--date=short", 
-            "--", rel_path
-        ]
-
-        try:
-            result = subprocess.run(
-                cmd, 
-                cwd=repo_dir, 
-                capture_output=True, 
-                text=True, 
-                check=True
-            )
-            
-            history = []
-            for line in result.stdout.splitlines():
-                if not line.strip():
-                    continue
-                
-                # Split by the tab character we inserted (%x09)
-                parts = line.split('\t')
-                if len(parts) == 4:
-                    history.append({
-                        "hash": parts[0],
-                        "author": parts[1],
-                        "date": parts[2],
-                        "message": parts[3]
-                    })
-            
-            return history
-
-        except subprocess.CalledProcessError as e:
-            print(f"Git Log Error: {e.stderr}")
-            return []
-        except FileNotFoundError:
-            print("Git executable not found.")
-            return []
-
-    
-        
-
-    @classmethod
-    def fetch(cls, file_path):
-        """Updates the local database with objects and refs from the remote."""
-        repo_dir = cls.get_git_repo(file_path)
-        try:
-            result = subprocess.run(
-                [cls.bin(), "fetch"],
-                cwd=repo_dir, 
-                capture_output=True, 
-                text=True, 
-                check=True
-            )
-            # Git fetch outputs status to stderr even on success
-            fetch_summary = result.stderr.strip()
-            return True, fetch_summary
-        except subprocess.CalledProcessError as e:
-            print(f"Git Fetch Error: {e.stderr.decode() if e.stderr else str(e)}")
-            return False
-
-    @classmethod
-    def pull(cls, file_path):
-        """
-        Incorporate changes from a remote repository into the current branch.
-        Uses --rebase to keep history clean for binary files.
-        """
-        repo_dir = cls.get_git_repo(file_path)
-        try:
-            # We use --rebase to avoid creating unnecessary merge commits
-            # We use --autostash to temporarily move local changes out of the way
-            result = subprocess.run(
-                [cls.bin(), "pull"],
-                cwd=repo_dir, check=True, capture_output=True
-            )
-            print(result.stderr.strip())
-            return True, "Success"
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
-            print(f"Git Pull Error: {error_msg}")
-            return False, error_msg
-        
+            print(f"Error finding current file version: {e}")
+            return False, "Unknown"
