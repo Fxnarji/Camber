@@ -7,6 +7,7 @@ except:
 from pathlib import Path
 import subprocess
 import os
+import json
 
 class Git():
 
@@ -23,11 +24,11 @@ class Git():
         raise ValueError("Not a git repository!")
     
     @classmethod
-    def checkout(self, hash, file_path):
-        repo_dir = self.get_git_repo(file_path)
+    def checkout(cls, hash, file_path):
+        repo_dir = cls.get_git_repo(file_path)
         rel_path = os.path.relpath(file_path, repo_dir)
         subprocess.run(
-            [f"{self.bin()}", "checkout", hash, "--", rel_path],
+            [f"{cls.bin()}", "checkout", hash, "--", rel_path],
             cwd=repo_dir,
             check=True
                     )
@@ -65,51 +66,36 @@ class Git():
             return "Unknown"
 
     @classmethod
-    def commit(self, msg, filepath):
-        # Get the directory of the current blend file
-        repo_dir = os.path.basename(filepath)
-        
+    def commit(cls, msg, filepath):
+        repo_dir = cls.get_git_repo(filepath)
         filename = os.path.basename(filepath)
-        repo_dir = os.path.dirname(filepath)
-        git_bin = self.bin()
+        git_bin = cls.bin()
 
         try:
-            # 1. Stage the file
             subprocess.run([git_bin, "add", filename], cwd=repo_dir, check=True, capture_output=True)
             
-            # 2. Check: Is there actually anything staged to commit?
-            # --quiet returns 0 if no changes, 1 if there are changes.
-            # We DON'T use check=True here because we WANT to handle the exit code.
             change_check = subprocess.run([git_bin, "diff", "--cached", "--quiet"], cwd=repo_dir)
             
             if change_check.returncode == 0:
-                print("No changes detected. Nothing to commit.") 
-                return True
+                return False, "No changes to commit"
 
-            # 3. Commit
             subprocess.run([git_bin, "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
-            
-            # 4. Push
-            result = subprocess.run([git_bin, "push"], cwd=repo_dir, capture_output=True, text=True)
-
-            print("push result: ", result)
+            return True, "Committed locally"
 
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.decode() if e.stderr else str(e)
-            print(f"Git Error: {error_msg}")
             return False, error_msg
         except FileNotFoundError:
-            print(self.bin)
-            return False, "Git executable not found. Is Git installed?"
+            return False, "Git executable not found"
 
     @classmethod
-    def get_detailed_git_history(self, file_path):
+    def get_detailed_git_history(cls, file_path):
         if not file_path or not os.path.exists(file_path):
             return []
 
-        repo_dir = self.get_git_repo(file_path)
-        rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/") # Git likes forward slashes
-        git_bin = self.bin()
+        repo_dir = cls.get_git_repo(file_path)
+        rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/")
+        git_bin = cls.bin()
 
         # Format: hash, author, date, message
         git_format = "%h%x09%an%x09%ad%x09%s"
@@ -155,23 +141,21 @@ class Git():
             return []
 
     @classmethod
-    def get_git_history(self, file_path):
+    def get_git_history(cls, file_path):
         """
         Returns a list of dictionaries containing commit history for a specific file.
         """
         if not file_path or not os.path.exists(file_path):
             return []
 
-        repo_dir = self.get_git_repo(file_path)
+        repo_dir = cls.get_git_repo(file_path)
 
         rel_path = os.path.relpath(file_path, repo_dir)
 
-        # We use a custom format to make parsing easy: 
-        # %h = short hash, %an = author name, %ad = date, %s = subject (message)
         git_format = "%h%x09%an%x09%ad%x09%s"
         
         cmd = [
-            f"{self.bin()}", "log", 
+            cls.bin(), "log", 
             f"--pretty=format:{git_format}", 
             "--date=short", 
             "--", rel_path
@@ -252,4 +236,96 @@ class Git():
             error_msg = e.stderr.decode() if e.stderr else str(e)
             print(f"Git Pull Error: {error_msg}")
             return False, error_msg
-        
+
+    @classmethod
+    def push(cls, file_path):
+        repo_dir = cls.get_git_repo(file_path)
+        try:
+            result = subprocess.run(
+                [cls.bin(), "push"],
+                cwd=repo_dir, capture_output=True, text=True, check=True
+            )
+            return True, result.stderr.strip() or "Push successful"
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.decode() if e.stderr else str(e)
+            return False, error_msg
+
+    @classmethod
+    def get_current_user(cls):
+        """Get the current Git user name and email."""
+        git_bin = cls.bin()
+        try:
+            name = subprocess.run(
+                [git_bin, "config", "--get", "user.name"],
+                capture_output=True, text=True, check=True
+            ).stdout.strip()
+            email = subprocess.run(
+                [git_bin, "config", "--get", "user.email"],
+                capture_output=True, text=True, check=True
+            ).stdout.strip()
+            return {"name": name, "email": email}
+        except subprocess.CalledProcessError:
+            return {"name": None, "email": None}
+
+    @classmethod
+    def lfs_list_locks(cls, file_path):
+        """List all LFS locks in the repository. Returns list of lock dicts."""
+        repo_dir = cls.get_git_repo(file_path)
+        git_bin = cls.bin()
+        try:
+            result = subprocess.run(
+                [git_bin, "lfs", "locks", "--json"],
+                cwd=repo_dir, capture_output=True, text=True, check=True
+            )
+            if result.stdout:
+                data = json.loads(result.stdout)
+                return data
+            return []
+        except subprocess.CalledProcessError:
+            return []
+        except json.JSONDecodeError:
+            return []
+
+    @classmethod
+    def lfs_get_lock(cls, file_path):
+        """Get lock info for a specific file. Returns {id, owner, path} or None."""
+        locks = cls.lfs_list_locks(file_path)
+        repo_dir = cls.get_git_repo(file_path)
+        rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/")
+        for lock in locks:
+            if lock.get("path") == rel_path:
+                return {
+                    "id": lock.get("id"),
+                    "owner": lock.get("owner", {}).get("name"),
+                    "path": lock.get("path")
+                }
+        return None
+
+    @classmethod
+    def lfs_lock(cls, file_path):
+        """Lock a file using git lfs lock."""
+        repo_dir = cls.get_git_repo(file_path)
+        git_bin = cls.bin()
+        try:
+            subprocess.run(
+                [git_bin, "lfs", "lock", file_path],
+                cwd=repo_dir, capture_output=True, text=True, check=True
+            )
+            return True, "File locked"
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else e.stdout.strip() if e.stdout else str(e)
+            return False, error_msg
+
+    @classmethod
+    def lfs_unlock(cls, lock_id):
+        """Unlock a file using git lfs unlock by lock ID."""
+        git_bin = cls.bin()
+        try:
+            subprocess.run(
+                [git_bin, "lfs", "unlock", str(lock_id)],
+                capture_output=True, text=True, check=True
+            )
+            return True, "File unlocked"
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else e.stdout.strip() if e.stdout else str(e)
+            return False, error_msg
