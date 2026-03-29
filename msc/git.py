@@ -94,11 +94,7 @@ class Git():
         repo_dir = cls.get_git_repo(file_path)
         rel_path = os.path.relpath(file_path, repo_dir)
         subprocess.run(
-<<<<<<< Updated upstream
-            [f"{cls.bin()}", "checkout", hash, "--", rel_path],
-=======
-            [self.bin(), "checkout", hash, "--", rel_path],
->>>>>>> Stashed changes
+            [cls.bin(), "checkout", hash, "--", rel_path],
             cwd=repo_dir,
             check=True
         )
@@ -134,29 +130,16 @@ class Git():
             return "Unknown"
 
     @classmethod
-<<<<<<< Updated upstream
     def commit(cls, msg, filepath):
         repo_dir = cls.get_git_repo(filepath)
-=======
-    def commit(self, msg, filepath):
->>>>>>> Stashed changes
         filename = os.path.basename(filepath)
         git_bin = cls.bin()
 
         try:
-<<<<<<< Updated upstream
             subprocess.run([git_bin, "add", filename], cwd=repo_dir, check=True, capture_output=True)
-            
-=======
-            # 1. Stage the file
-            subprocess.run([git_bin, "add", filename], cwd=repo_dir, check=True, capture_output=True, text=True)
 
-            # 2. Check: is there actually anything staged to commit?
-            # --quiet returns 0 if no changes, 1 if there are changes.
->>>>>>> Stashed changes
             change_check = subprocess.run([git_bin, "diff", "--cached", "--quiet"], cwd=repo_dir)
             if change_check.returncode == 0:
-<<<<<<< Updated upstream
                 return False, "No changes to commit"
 
             subprocess.run([git_bin, "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True)
@@ -167,29 +150,6 @@ class Git():
             return False, error_msg
         except FileNotFoundError:
             return False, "Git executable not found"
-=======
-                print("No changes detected. Nothing to commit.")
-                return True
-
-            # 3. Commit
-            subprocess.run([git_bin, "commit", "-m", msg], cwd=repo_dir, check=True, capture_output=True, text=True)
-
-            # 4. Push with injected credentials
-            with self._credential_env() as (env, cred_args):
-                subprocess.run(
-                    [git_bin, *cred_args, "push"],
-                    cwd=repo_dir, check=True, capture_output=True, text=True,
-                    env=env
-                )
-
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.strip() if e.stderr else str(e)
-            print(f"Git Error: {error_msg}")
-            return False, error_msg
-        except FileNotFoundError:
-            print(git_bin)
-            return False, "Git executable not found. Is Git installed?"
->>>>>>> Stashed changes
 
     @classmethod
     def get_detailed_git_history(cls, file_path):
@@ -250,27 +210,16 @@ class Git():
         if not file_path or not os.path.exists(file_path):
             return []
 
-<<<<<<< Updated upstream
         repo_dir = cls.get_git_repo(file_path)
-
         rel_path = os.path.relpath(file_path, repo_dir)
 
         git_format = "%h%x09%an%x09%ad%x09%s"
-        
         cmd = [
-            cls.bin(), "log", 
-            f"--pretty=format:{git_format}", 
-            "--date=short", 
+            cls.bin(), "log",
+            f"--pretty=format:{git_format}",
+            "--date=short",
             "--", rel_path
         ]
-=======
-        repo_dir = self.get_git_repo(file_path)
-        rel_path = os.path.relpath(file_path, repo_dir)
-
-        # %h = short hash, %an = author name, %ad = date, %s = subject (message)
-        git_format = "%h%x09%an%x09%ad%x09%s"
-        cmd = [self.bin(), "log", f"--pretty=format:{git_format}", "--date=short", "--", rel_path]
->>>>>>> Stashed changes
 
         try:
             result = subprocess.run(cmd, cwd=repo_dir, capture_output=True, text=True, check=True)
@@ -338,19 +287,20 @@ class Git():
             error_msg = e.stderr.strip() if e.stderr else str(e)
             print(f"Git Pull Error: {error_msg}")
             return False, error_msg
-<<<<<<< Updated upstream
 
     @classmethod
     def push(cls, file_path):
         repo_dir = cls.get_git_repo(file_path)
         try:
-            result = subprocess.run(
-                [cls.bin(), "push"],
-                cwd=repo_dir, capture_output=True, text=True, check=True
-            )
+            with cls._credential_env() as (env, cred_args):
+                result = subprocess.run(
+                    [cls.bin(), *cred_args, "push"],
+                    cwd=repo_dir, capture_output=True, text=True, check=True,
+                    env=env
+                )
             return True, result.stderr.strip() or "Push successful"
         except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
+            error_msg = e.stderr.strip() if e.stderr else str(e)
             return False, error_msg
 
     @classmethod
@@ -408,10 +358,11 @@ class Git():
     def lfs_lock(cls, file_path):
         """Lock a file using git lfs lock."""
         repo_dir = cls.get_git_repo(file_path)
+        rel_path = os.path.relpath(file_path, repo_dir).replace("\\", "/")
         git_bin = cls.bin()
         try:
             subprocess.run(
-                [git_bin, "lfs", "lock", file_path],
+                [git_bin, "lfs", "lock", rel_path],
                 cwd=repo_dir, capture_output=True, text=True, check=True
             )
             return True, "File locked"
@@ -425,12 +376,10 @@ class Git():
         git_bin = cls.bin()
         try:
             subprocess.run(
-                [git_bin, "lfs", "unlock", str(lock_id)],
+                [git_bin, "lfs", "unlock", "--id", str(lock_id)],
                 capture_output=True, text=True, check=True
             )
             return True, "File unlocked"
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.strip() if e.stderr else e.stdout.strip() if e.stdout else str(e)
             return False, error_msg
-=======
->>>>>>> Stashed changes
