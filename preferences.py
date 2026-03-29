@@ -22,6 +22,19 @@ class Sample_Preferences(bpy.types.AddonPreferences):
         default="git",
     )
 
+    username: bpy.props.StringProperty(
+        name="Username",
+        description="Your username on the Git server",
+        default=get_default("username", ""),
+    )
+
+    personal_access_token: bpy.props.StringProperty(
+        name="Personal Access Token",
+        description="PAT used to authenticate git push/pull/fetch",
+        default="",
+        subtype='PASSWORD',
+    )
+
     admin_permissions: bpy.props.BoolProperty(
         name="Admin Mode",
         description="Enable advanced Git operations",
@@ -33,4 +46,11 @@ class Sample_Preferences(bpy.types.AddonPreferences):
 
         box = layout.box()
         box.prop(self, "git_path")
+
+        box = layout.box()
+        col = box.column()
+        col.prop(self, "username")
+        col.prop(self, "personal_access_token")
+
+        box = layout.box()
         box.prop(self, "admin_permissions")
