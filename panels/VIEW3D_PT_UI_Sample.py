@@ -1,11 +1,17 @@
 import bpy  # type: ignore
-from ..constants import AddonProperties
+from ..constants import AddonProperties, get_preferences
 from ..operators.GIT_OT_Pull import GIT_OT_Pull
 from ..operators.GIT_OT_Commit import GIT_OT_Commit
 from ..operators.GIT_OT_Push import GIT_OT_Push
 from ..operators.GIT_OT_RefreshHistory import GIT_OT_RefreshHistory
+<<<<<<< Updated upstream
 from ..operators.GIT_OT_Lock import GIT_OT_Lock
 from ..operators.GIT_OT_Unlock import GIT_OT_Unlock
+=======
+from ..operators.OBJECT_OT_Lock import OBJECT_OT_Lock
+from ..msc.api import API
+>>>>>>> Stashed changes
+
 
 class VIEW3D_PT_UI_Sample(bpy.types.Panel):
     bl_label = "Camber Debug"
@@ -24,6 +30,7 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
         else:
             layout.label(text="Not in a git repo", icon='ERROR')
             layout.operator(GIT_OT_RefreshHistory.bl_idname, icon="FILE_REFRESH")
+<<<<<<< Updated upstream
 
     def draw_lock_status(self, context, layout):
         camber_data = context.scene.camber_data
@@ -39,17 +46,49 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
     def get_current_user(self):
         from ..msc.git import Git
         return Git.get_current_user().get("name")
+=======
+
+    def draw_pull(self, context, layout):
+        box = layout.box()
+        box.operator(GIT_OT_Pull.bl_idname, text="Fetch", icon="FILE_REFRESH").fetch_only = True
+        box.operator(GIT_OT_Pull.bl_idname, text="Pull Latest", icon="IMPORT")
+
+    def draw_lock_status(self, context, layout):
+        camber_data = context.scene.camber_data
+        lock_owner = camber_data.lock_owner
+
+        box = layout.box()
+
+        if lock_owner:
+            row = box.row()
+            row.label(text=f"Locked by: {lock_owner}", icon="LOCKED")
+            box.label(text=f"Since: {camber_data.lock_date}")
+
+            # Only show Unlock if the current user owns the lock
+            api = API()
+            if api.is_current_user_lock_owner(lock_owner):
+                box.operator(OBJECT_OT_Lock.bl_idname, text="Unlock", icon="UNLOCKED").lock = False
+        else:
+            box.label(text="Not locked", icon="UNLOCKED")
+            box.operator(OBJECT_OT_Lock.bl_idname, text="Lock", icon="LOCKED").lock = True
+>>>>>>> Stashed changes
 
     def draw_commit(self, context, parent):
         camber_data = context.scene.camber_data
-        
+
         box = parent.box()
         col = box.column()
+<<<<<<< Updated upstream
         col.prop(camber_data, "commit_message", text="")
         
         row = col.row()
         row.operator(GIT_OT_Commit.bl_idname, text="Commit", icon="CHECKMARK")
         row.operator(GIT_OT_Push.bl_idname, text="Push", icon="EXPORT")
+=======
+        col.label(text="Commit Message:")
+        col.prop(camber_data, "commit_message", text="")
+        col.operator(GIT_OT_Commit.bl_idname, text="Push", icon="EXPORT")
+>>>>>>> Stashed changes
 
     def draw_history(self, context, layout):
         layout.prop(context.scene.camber_data, "admin_mode", toggle=True)
@@ -57,17 +96,20 @@ class VIEW3D_PT_UI_Sample(bpy.types.Panel):
             layout.operator(GIT_OT_RefreshHistory.bl_idname, icon="FILE_REFRESH").detailed = True
 
         layout.template_list(
-            "GitUIList", 
-            "", 
-            context.scene, 
-            "git_history", 
-            context.scene, 
+            "GitUIList",
+            "",
+            context.scene,
+            "git_history",
+            context.scene,
             "git_history_index")
-        
+
         current_hash = context.scene.camber_data.get("current_version")
         layout.label(text=f"currently checked out: {current_hash}")
+<<<<<<< Updated upstream
 
     def draw_pull(self, context, layout):
         box = layout.box()
         box.operator(GIT_OT_Pull.bl_idname, text="Fetch", icon="FILE_REFRESH").fetch_only = True
         box.operator(GIT_OT_Pull.bl_idname, text="Pull Latest", icon="IMPORT")
+=======
+>>>>>>> Stashed changes

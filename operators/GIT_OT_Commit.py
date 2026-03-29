@@ -21,6 +21,7 @@ class GIT_OT_Commit(bpy.types.Operator):
         camber_data = context.scene.camber_data
         msg = camber_data.get("commit_message")
 
+<<<<<<< Updated upstream
         success, message = git.commit(msg, filepath)
         if success:
             self.report({'INFO'}, message)
@@ -30,3 +31,17 @@ class GIT_OT_Commit(bpy.types.Operator):
         else:
             self.report({'WARNING'}, message)
             return {'CANCELLED'}
+=======
+        result = git.commit(msg, bpy.data.filepath)
+
+        if isinstance(result, tuple) and not result[0]:
+            self.report({'ERROR'}, f"Commit failed: {result[1]}")
+            return {'CANCELLED'}
+
+        self.report({'INFO'}, f"Committed: {msg}")
+
+        camber_data["commit_message"] = ""
+        bpy.ops.camber.lock()
+        bpy.ops.camber.refresh()
+        return {'FINISHED'}
+>>>>>>> Stashed changes
